@@ -210,7 +210,7 @@ class DelugeCollector(object):
         pass
       self.rpc_port = json.load(f)['daemon_port']
     with open(os.path.join(deluge_config_dir, 'auth')) as f:
-      self.rpc_user, self.rpc_password = f.readline().strip().split(':', 1)
+      self.rpc_user, self.rpc_password = f.readline().strip().split(':')[:2]
 
   def collect(self):
     client = DelugeRPCClient('127.0.0.1', self.rpc_port, self.rpc_user, self.rpc_password)

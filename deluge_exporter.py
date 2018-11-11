@@ -213,7 +213,8 @@ class DelugeCollector(object):
       self.rpc_user, self.rpc_password = f.readline().strip().split(':')[:2]
 
   def collect(self):
-    client = DelugeRPCClient('127.0.0.1', self.rpc_port, self.rpc_user, self.rpc_password)
+    deluge_host = os.environ.get('DELUGE_HOST', '127.0.0.1')
+    client = DelugeRPCClient(deluge_host, self.rpc_port, self.rpc_user, self.rpc_password)
     client.connect()
 
     libtorrent_status_metrics = get_libtorrent_status_metrics_meta()

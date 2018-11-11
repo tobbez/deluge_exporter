@@ -42,6 +42,15 @@ newer [performance/statistics counters](https://www.libtorrent.org/manual-ref.ht
 Deluge 1.3.x only exposes the statistics provided by the deprecated
 `session_get_status()`.
 
+## Docker
+
+A docker image is [available on Docker Hub](https://hub.docker.com/r/tobbez/deluge_exporter/).
+
+It currently requires passing the deluge config directory into the container, [for example](https://github.com/tobbez/deluge_exporter/pull/1#issue-229784499):
+
+```
+docker run -e "DELUGE_HOST=172.17.0.1" -v /etc/deluge:/root/.config/deluge/ -p 9354:9354 tobbez/deluge_exporter:latest
+```
 
 ## Exported metrics
 

@@ -53,12 +53,12 @@ r = requests.get(args.metrics_url)
 metrics = get_metrics(r.text)
 for m, l in get_labels(r.text).items():
   metrics[m]['help'] += ' (labels: {})'.format(format_labels(l))
-mws = list(reduce(lambda x, y: map(max, zip(x, y)), map(lambda x: map(compose(len, methodcaller('replace', '_', r'\_')), [x[0], x[1]['type'], x[1]['help']]), metrics.items())))
+mws = list(reduce(lambda x, y: map(max, zip(x, y)), map(lambda x: map(compose(len, compose(methodcaller('replace', '|', r'\|'), methodcaller('replace', '_', r'\_'))), [x[0], x[1]['type'], x[1]['help']]), metrics.items())))
 
 print(f"| {'Name':{mws[0]}} | {'Type':{mws[1]}} | {'Description':{mws[2]}} |")
 print(f"| {'-'*mws[0]} | {'-'*mws[1]} | {'-'*mws[2]} |")
 for metric, info in metrics.items():
   m = metric.replace('_', r'\_')
   t = info['type'].replace('_', r'\_')
-  h = info['help'].replace('_', r'\_')
+  h = info['help'].replace('_', r'\_').replace('|', r'\|')
   print(f'| {m:{mws[0]}} | {t:{mws[1]}} | {h:{mws[2]}} |')

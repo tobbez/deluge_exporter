@@ -25,58 +25,58 @@ def get_libtorrent_status_metrics_meta():
       'conv': int,
     },
 
-    'download_bytes_total': {
-      'source': b'total_download',
-      'type': CounterMetricFamily,
-      'help': 'Total bytes downloaded from all torrents. Includes all protocol overhead.',
-    },
-    'upload_bytes_total': {
-      'source': b'total_upload',
-      'type': CounterMetricFamily,
-      'help': 'Total bytes uploaded for all torrents. Includes all protocol overhead.',
-    },
+    # 'download_bytes_total': {
+    #   'source': b'total_download',
+    #   'type': CounterMetricFamily,
+    #   'help': 'Total bytes downloaded from all torrents. Includes all protocol overhead.',
+    # },
+    # 'upload_bytes_total': {
+    #   'source': b'total_upload',
+    #   'type': CounterMetricFamily,
+    #   'help': 'Total bytes uploaded for all torrents. Includes all protocol overhead.',
+    # },
 
     'payload_download_bytes_total': {
       'source': b'total_payload_download',
-      'type': CounterMetricFamily,
+      'type': None,
       'help': 'Downloaded bytes excluding BitTorrent protocol overhead.',
     },
     'payload_upload_bytes_total': {
       'source': b'total_payload_upload',
-      'type': CounterMetricFamily,
+      'type': None,
       'help': 'Uploaded bytes excluding BitTorrent protocol overhead.',
     },
 
     'ip_overhead_download_bytes_total': {
       'source': b'total_ip_overhead_download',
-      'type': CounterMetricFamily,
+      'type': None,
       'help': 'Estimated bytes of TCP/IP overhead for downloads.',
     },
     'ip_overhead_upload_bytes_total': {
       'source': b'total_ip_overhead_upload',
-      'type': CounterMetricFamily,
+      'type': None,
       'help': 'Estimated bytes of TCP/IP overhead for uploads.',
     },
 
     'dht_download_bytes_total': {
       'source': b'total_dht_download',
-      'type': CounterMetricFamily,
+      'type': None,
       'help': 'Total bytes sent to the DHT.',
     },
     'dht_upload_bytes_total': {
       'source': b'total_dht_upload',
-      'type': CounterMetricFamily,
+      'type': None,
       'help': 'Total bytes received from the DHT.',
     },
 
     'tracker_download_bytes_total': {
       'source': b'total_tracker_download',
-      'type': CounterMetricFamily,
+      'type': None,
       'help': 'Total bytes received from trackers.',
     },
     'tracker_upload_bytes_total': {
       'source': b'total_tracker_upload',
-      'type': CounterMetricFamily,
+      'type': None,
       'help': 'Total traffic sent to trackers.',
     },
 
@@ -223,10 +223,19 @@ class DelugeCollector(object):
     libtorrent_status_metric_values = client.call('core.get_session_status', libtorrent_status_metric_source_names)
 
     for metric, props in libtorrent_status_metrics.items():
+      if props['type'] is None:
+        continue
+
       value = libtorrent_status_metric_values[props['source']]
       if 'conv' in props:
         value = props['conv'](value)
       yield props['type']('deluge_libtorrent_{}'.format(metric), props['help'], value=value)
+
+    for direction in ['upload', 'download']:
+      transfer_metric = CounterMetricFamily('deluge_libtorrent_{}_bytes_total'.format(direction), 'Total bytes {}ed for all torrents.'.format(direction), labels=['type'])
+      for traffic_type in ['payload', 'ip_overhead', 'dht', 'tracker']:
+        transfer_metric.add_metric([traffic_type], libtorrent_status_metric_values['total_{}_{}'.format(traffic_type, direction).encode('ascii')])
+      yield transfer_metric
 
     yield new_metric_with_labels_and_value(GaugeMetricFamily, 'deluge_info', 'Deluge information',
       labels={

@@ -1,0 +1,8 @@
+# idea
+.idea/*
+
+# example
+example/*
+
+# env
+.env

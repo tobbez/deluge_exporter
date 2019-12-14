@@ -52,6 +52,8 @@ It currently requires passing the deluge config directory into the container, [f
 docker run -e "DELUGE_HOST=172.17.0.1" -v /etc/deluge:/root/.config/deluge/ -p 9354:9354 tobbez/deluge_exporter:latest
 ```
 
+You probably need to [enable remote connections](https://dev.deluge-torrent.org/wiki/UserGuide/ThinClient#EnableRemoteConnection)!
+
 ## Exported metrics
 
 | Name                                                  | Type    | Description                                                                                                                                                   |

@@ -164,17 +164,17 @@ def get_libtorrent_status_metrics_meta():
       'help': 'The number of torrents tracked by the DHT at the moment.',
     },
 
-    'dht_estimated_global_nodes': {
-      'source': b'dht_global_nodes',
-      'type': GaugeMetricFamily,
-      'help': 'An estimation of the total number of nodes in the DHT network.',
-    },
+    # 'dht_estimated_global_nodes': {
+    #   'source': b'dht_global_nodes',
+    #   'type': GaugeMetricFamily,
+    #   'help': 'An estimation of the total number of nodes in the DHT network.',
+    # },
 
-    'dht_total_allocations': {
-      'source': b'dht_total_allocations',
-      'type': GaugeMetricFamily,
-      'help': 'The number of nodes allocated dynamically for a particular DHT lookup. This represents roughly the amount of memory used by the DHT.',
-    },
+    # 'dht_total_allocations': {
+    #   'source': b'dht_total_allocations',
+    #   'type': GaugeMetricFamily,
+    #   'help': 'The number of nodes allocated dynamically for a particular DHT lookup. This represents roughly the amount of memory used by the DHT.',
+    # },
 
     # 'peerlist_size': {
     #   'source': b'peerlist_size',

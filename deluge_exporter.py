@@ -6,6 +6,8 @@ import pwd
 import time
 
 from collections import defaultdict
+from functools import lru_cache
+from pathlib import Path
 
 from deluge_client import DelugeRPCClient
 
@@ -13,186 +15,16 @@ from prometheus_client import start_http_server
 from prometheus_client.core import GaugeMetricFamily, CounterMetricFamily, REGISTRY
 
 
-def get_libtorrent_status_metrics_meta():
-  # deluge does not expose these:
-  # import libtorrent
-  # return [(x.name, x.type) for x in libtorrent.session_stats_metrics()]
-  return {
-    'has_incoming_connections': {
-      'source': b'has_incoming_connections',
-      'type': GaugeMetricFamily,
-      'help': '0 as long as no incoming connections have been established on the listening socket. Every time you change the listen port, this will be reset to 0.',
-      'conv': int,
-    },
-
-    # 'download_bytes_total': {
-    #   'source': b'total_download',
-    #   'type': CounterMetricFamily,
-    #   'help': 'Total bytes downloaded from all torrents. Includes all protocol overhead.',
-    # },
-    # 'upload_bytes_total': {
-    #   'source': b'total_upload',
-    #   'type': CounterMetricFamily,
-    #   'help': 'Total bytes uploaded for all torrents. Includes all protocol overhead.',
-    # },
-
-    'payload_download_bytes_total': {
-      'source': b'total_payload_download',
-      'type': None,
-      'help': 'Downloaded bytes excluding BitTorrent protocol overhead.',
-    },
-    'payload_upload_bytes_total': {
-      'source': b'total_payload_upload',
-      'type': None,
-      'help': 'Uploaded bytes excluding BitTorrent protocol overhead.',
-    },
-
-    'ip_overhead_download_bytes_total': {
-      'source': b'total_ip_overhead_download',
-      'type': None,
-      'help': 'Estimated bytes of TCP/IP overhead for downloads.',
-    },
-    'ip_overhead_upload_bytes_total': {
-      'source': b'total_ip_overhead_upload',
-      'type': None,
-      'help': 'Estimated bytes of TCP/IP overhead for uploads.',
-    },
-
-    'dht_download_bytes_total': {
-      'source': b'total_dht_download',
-      'type': None,
-      'help': 'Total bytes sent to the DHT.',
-    },
-    'dht_upload_bytes_total': {
-      'source': b'total_dht_upload',
-      'type': None,
-      'help': 'Total bytes received from the DHT.',
-    },
-
-    'tracker_download_bytes_total': {
-      'source': b'total_tracker_download',
-      'type': None,
-      'help': 'Total bytes received from trackers.',
-    },
-    'tracker_upload_bytes_total': {
-      'source': b'total_tracker_upload',
-      'type': None,
-      'help': 'Total traffic sent to trackers.',
-    },
-
-    'redundant_download_bytes_total': {
-      'source': b'total_redundant_bytes',
-      'type': CounterMetricFamily,
-      'help': 'The number of bytes that has been received more than once.',
-    },
-
-    'failed_bytes_total': {
-      'source': b'total_failed_bytes',
-      'type': CounterMetricFamily,
-      'help': 'The number of bytes that were downloaded and later failed the hash check.',
-    },
-
-    'peers': {
-      'source': b'num_peers',
-      'type': GaugeMetricFamily,
-      'help': 'Current number of peer connections in the current session, including connections that are not yet fully open.',
-    },
-    # 'dead_peers': {
-    #   'source': b'num_dead_peers',
-    #   'type': GaugeMetricFamily,
-    #   'help': 'Dead peers.',
-    # },
-    'unchoked_peers': {
-      'source': b'num_unchoked',
-      'type': GaugeMetricFamily,
-      'help': 'The current number of unchoked peers.',
-    },
-
-    'allowed_upload_slots': {
-      'source': b'allowed_upload_slots',
-      'type': GaugeMetricFamily,
-      'help': 'The current allowed number of unchoked peers.',
-    },
-
-    'upload_queued_peers': {
-      'source': b'up_bandwidth_queue',
-      'type': GaugeMetricFamily,
-      'help': 'The number of peers that are waiting for more bandwidth quota from the torrent rate limiter.',
-    },
-    'download_queued_peers': {
-      'source': b'down_bandwidth_queue',
-      'type': GaugeMetricFamily,
-      'help': 'The number of peers that are waiting for more bandwidth quota from the torrent rate limiter.',
-    },
-
-    'upload_queued_bytes': {
-      'source': b'up_bandwidth_bytes_queue',
-      'type': GaugeMetricFamily,
-      'help': 'The number of bytes the queued connections are waiting for to be able to send.',
-    },
-    'download_queued_bytes': {
-      'source': b'down_bandwidth_bytes_queue',
-      'type': GaugeMetricFamily,
-      'help': 'The number of bytes the queued connections are waiting for to be able to receive.',
-    },
-
-    # 'disk_write_queued_peers': {
-    #   'source': b'disk_write_queue',
-    #   'type': GaugeMetricFamily,
-    #   'help': 'The number of peers currently waiting on a disk write to complete before it receives any more data on the socket.',
-    # },
-    # 'disk_read_queued_peers': {
-    #   'source': b'disk_read_queue',
-    #   'type': GaugeMetricFamily,
-    #   'help': 'The number of peers currently waiting on a disk read to complete before it sends any more data on the socket.',
-    # },
-
-    'dht_nodes': {
-      'source': b'dht_nodes',
-      'type': GaugeMetricFamily,
-      'help': 'The number of nodes in the DHT routing table.',
-    },
-    'dht_cached_nodes': {
-      'source': b'dht_node_cache',
-      'type': GaugeMetricFamily,
-      'help': 'The number of cached DHT nodes (used to replace the regular nodes in the routing table in case any of them becomes unresponsive).',
-    },
-
-    'dht_torrents': {
-      'source': b'dht_torrents',
-      'type': GaugeMetricFamily,
-      'help': 'The number of torrents tracked by the DHT at the moment.',
-    },
-
-    'dht_estimated_global_nodes': {
-      'source': b'dht_global_nodes',
-      'type': GaugeMetricFamily,
-      'help': 'An estimation of the total number of nodes in the DHT network.',
-    },
-
-    'dht_total_allocations': {
-      'source': b'dht_total_allocations',
-      'type': GaugeMetricFamily,
-      'help': 'The number of nodes allocated dynamically for a particular DHT lookup. This represents roughly the amount of memory used by the DHT.',
-    },
-
-    # 'peerlist_size': {
-    #   'source': b'peerlist_size',
-    #   'type': GaugeMetricFamily,
-    #   'help': 'The number of known peers across all torrents.',
-    # },
-
-    # 'torrents': {
-    #   'source': b'num_torrents',
-    #   'type': GaugeMetricFamily,
-    #   'help': 'The number of torrents in the session.',
-    # },
-    # 'paused_torrents': {
-    #   'source': b'num_paused_torrents',
-    #   'type': GaugeMetricFamily,
-    #   'help': 'The number of paused torrents in the session.',
-    # },
+@lru_cache()
+def get_libtorrent_metrics_meta():
+  # https://www.libtorrent.org/manual-ref.html#session-statistics
+  type_map = {
+    'counter': CounterMetricFamily,
+    'gauge': GaugeMetricFamily,
   }
+  # Load from pre-generated file to avoid libtorrent dependency at runtime
+  with (Path(__file__).parent / 'libtorrent_metrics.json').open() as f:
+    return {n: type_map[t] for n, t in json.load(f)['metrics'].items()}
 
 
 def new_metric_with_labels_and_value(metric, name, documentation, labels, value):
@@ -217,25 +49,17 @@ class DelugeCollector(object):
     client = DelugeRPCClient(deluge_host, self.rpc_port, self.rpc_user, self.rpc_password)
     client.connect()
 
-    libtorrent_status_metrics = get_libtorrent_status_metrics_meta()
-    libtorrent_status_metric_source_names = [x['source'] for x in libtorrent_status_metrics.values()]
+    libtorrent_metrics = get_libtorrent_metrics_meta()
+    libtorrent_metric_values = client.call('core.get_session_status', [])
 
-    libtorrent_status_metric_values = client.call('core.get_session_status', libtorrent_status_metric_source_names)
-
-    for metric, props in libtorrent_status_metrics.items():
-      if props['type'] is None:
-        continue
-
-      value = libtorrent_status_metric_values[props['source']]
-      if 'conv' in props:
-        value = props['conv'](value)
-      yield props['type']('deluge_libtorrent_{}'.format(metric), props['help'], value=value)
-
-    for direction in ['upload', 'download']:
-      transfer_metric = CounterMetricFamily('deluge_libtorrent_{}_bytes_total'.format(direction), 'Total bytes {}ed for all torrents.'.format(direction), labels=['type'])
-      for traffic_type in ['payload', 'ip_overhead', 'dht', 'tracker']:
-        transfer_metric.add_metric([traffic_type], libtorrent_status_metric_values['total_{}_{}'.format(traffic_type, direction).encode('ascii')])
-      yield transfer_metric
+    for metric, metric_type in libtorrent_metrics.items():
+      encoded_name = metric.encode('ascii')
+      if encoded_name in libtorrent_metric_values:
+        yield metric_type(
+          'deluge_libtorrent_{}'.format(metric.replace('.', '_')),
+          'libtorrent metric {}'.format(metric),
+          value=libtorrent_metric_values[encoded_name]
+        )
 
     yield new_metric_with_labels_and_value(GaugeMetricFamily, 'deluge_info', 'Deluge information',
       labels={

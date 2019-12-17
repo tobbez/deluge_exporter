@@ -5,7 +5,7 @@ Prometheus exporter for the [Deluge](https://deluge-torrent.org/) BitTorrent cli
 
 ## Requirements
 
- * Python 2.7 or 3
+ * Python 3
  * [prometheus\_client](https://github.com/prometheus/client_python)
  * [deluge-client](https://github.com/JohnDoee/deluge-client)
 

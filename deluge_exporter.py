@@ -2,7 +2,7 @@
 
 import json
 import os
-import pwd
+import sys
 import time
 
 from collections import defaultdict
@@ -35,7 +35,9 @@ def new_metric_with_labels_and_value(metric, name, documentation, labels, value)
 
 
 def get_deluge_config_dir():
-  return Path(pwd.getpwuid(os.getuid()).pw_dir) / '.config' / 'deluge'
+  if sys.platform == 'win32':
+    return Path(os.environ['APPDATA']) / 'deluge'
+  return Path.home() / '.config' / 'deluge'
 
 
 class DelugeCollector:

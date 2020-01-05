@@ -36,12 +36,12 @@ def new_metric_with_labels_and_value(metric, name, documentation, labels, value)
 
 class DelugeCollector:
   def __init__(self):
-    deluge_config_dir = os.path.join(pwd.getpwuid(os.getuid()).pw_dir, '.config', 'deluge')
-    with open(os.path.join(deluge_config_dir, 'core.conf')) as f:
+    deluge_config_dir = Path(pwd.getpwuid(os.getuid()).pw_dir) / '.config' / 'deluge'
+    with (deluge_config_dir / 'core.conf').open() as f:
       while f.read(1) != '}':
         pass
       self.rpc_port = json.load(f)['daemon_port']
-    with open(os.path.join(deluge_config_dir, 'auth')) as f:
+    with Path(deluge_config_dir / 'auth').open() as f:
       self.rpc_user, self.rpc_password = f.readline().strip().split(':')[:2]
 
   def collect(self):

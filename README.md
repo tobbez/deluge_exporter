@@ -23,11 +23,17 @@ could use improvements are:
 
 
 ### Configuration
-There is currently no explicit configuration. The Deluge Exporter currently
-expects to be run under the same user account as the deluge daemon, and
-extracts the connection details from Deluge's configuration files.
+The Deluge Exporter currently expects to be run under the same user account as
+the deluge daemon, and extracts the connection details from Deluge's
+configuration files.
 
 The exporter listens on port 9354.
+
+The following settings can be overridden using environment variables:
+
+ - `DELUGE_HOST`: The host where deluge is running.
+ - `DELUGE_CONFIG_DIR`: The path to Deluge's configuration directory.
+
 
 ### Per-torrent metrics
 Per-torrent metrics are not included by design. They are not particularly

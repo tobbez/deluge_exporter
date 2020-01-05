@@ -34,9 +34,13 @@ def new_metric_with_labels_and_value(metric, name, documentation, labels, value)
   return m
 
 
+def get_deluge_config_dir():
+  return Path(pwd.getpwuid(os.getuid()).pw_dir) / '.config' / 'deluge'
+
+
 class DelugeCollector:
   def __init__(self):
-    deluge_config_dir = Path(pwd.getpwuid(os.getuid()).pw_dir) / '.config' / 'deluge'
+    deluge_config_dir = os.environ.get('DELUGE_CONFIG_DIR', get_deluge_config_dir())
     with (deluge_config_dir / 'core.conf').open() as f:
       while f.read(1) != '}':
         pass

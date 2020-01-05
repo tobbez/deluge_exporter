@@ -114,8 +114,12 @@ class DelugeCollector:
     client.disconnect()
 
 
-if __name__ == '__main__':
+def start_exporter():
   REGISTRY.register(DelugeCollector())
   start_http_server(9354)
+
+
+if __name__ == '__main__':
+  start_exporter()
   while True:
     time.sleep(60)

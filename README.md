@@ -53,6 +53,17 @@ It currently requires passing the deluge config directory into the container, [f
 docker run -e "DELUGE_HOST=172.17.0.1" -v /etc/deluge:/root/.config/deluge/ -p 9354:9354 tobbez/deluge_exporter:latest
 ```
 
+
+## Windows service
+
+On Windows, a service can be created by running the following with
+Administrator privileges:
+
+```
+sc create deluge_exporter binPath= "C:\path\to\python.exe C:\path\to\deluge_exporter_windows_service.py start" obj= .\USERNAME password= PASSWORD displayname= deluge_exporter start= auto
+```
+
+
 ## Exported metrics
 
 | Name                                                                | Type    | Description                                                                                                                                                   |

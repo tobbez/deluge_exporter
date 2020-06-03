@@ -42,7 +42,7 @@ def get_deluge_config_dir():
 
 class DelugeCollector:
   def __init__(self):
-    deluge_config_dir = os.environ.get('DELUGE_CONFIG_DIR', get_deluge_config_dir())
+    deluge_config_dir = Path(os.environ.get('DELUGE_CONFIG_DIR', get_deluge_config_dir()))
     with (deluge_config_dir / 'core.conf').open() as f:
       while f.read(1) != '}':
         pass

@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import time
+import itertools
 
 from collections import defaultdict
 from functools import lru_cache
@@ -110,6 +111,38 @@ class DelugeCollector:
     for state, torrent_count in torrents_by_state.items():
       torrents_metric.add_metric([state], torrent_count)
     yield torrents_metric
+
+    if int(os.environ.get("PER_TORRENT_METRICS", 0)) == 1:
+      per_torrent_keys = [
+        (CounterMetricFamily, b'total_done', 'The amount of data downloaded for this torrent'),
+        (CounterMetricFamily, b'total_size', 'The size of this torrent'),
+        (CounterMetricFamily, b'total_uploaded', 'The amount of data uploaded for this torrent'),
+        (GaugeMetricFamily, b'num_peers', 'The number of peers currently connected to for this torrent'),
+        (GaugeMetricFamily, b'num_seeds', 'The number of seeds currently connected to for this torrent'),
+        (GaugeMetricFamily, b'total_peers', 'The number of peers in the swarm for this torrent'),
+        (GaugeMetricFamily, b'total_seeds', 'The number of seeds in the swarm for this torrent'),
+      ]
+      per_torrent_metrics = dict(
+        (
+          metric_name,
+          metric_type(
+            'deluge_torrent_{}'.format(metric_name.decode('utf-8')),
+            metric_description, labels=['name', 'hash']
+          )
+        ) for metric_type, metric_name, metric_description in per_torrent_keys
+      )
+      for torrent_hash, torrent in client.core.get_torrents_status({}, [key[1] for key in per_torrent_keys] + [b'name']).items():
+        for metric_name, metric in per_torrent_metrics.items():
+          metric.add_metric(
+            [
+              torrent[b'name'].decode('utf-8'),
+              torrent_hash.decode('utf-8')
+            ],
+            torrent[metric_name]
+          )
+
+      for metric in per_torrent_metrics.values():
+        yield metric
 
     client.disconnect()
 

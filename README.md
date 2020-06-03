@@ -36,11 +36,9 @@ The following settings can be overridden using environment variables:
 
 
 ### Per-torrent metrics
-Per-torrent metrics are not included by design. They are not particularly
-useful, and would cause series bloat.
-
-A contribution adding them would be accepted assuming it would be opt-in (by
-command line flag or configuration option).
+Per-torrent metrics are disabled by default and can be enabled by setting the
+environment variable `PER_TORRENT_METRICS` to `1`. Keep in mind that this can
+cause series bloat.
 
 
 ## Docker

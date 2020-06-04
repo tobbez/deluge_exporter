@@ -41,6 +41,24 @@ def get_deluge_config_dir():
   return Path.home() / '.config' / 'deluge'
 
 
+def generate_per_torrent_metrics(definition):
+  for metric_type, metric_name, metric_description in definition:
+    # Remove total_ prefix from counters because prometheus suffixes all
+    # counters with _total.
+    exported_metric_name = metric_name.decode('utf-8')
+    if exported_metric_name.startswith('total_') and metric_type == CounterMetricFamily:
+      exported_metric_name = exported_metric_name[6:]
+
+    yield (
+      metric_name,
+      metric_type(
+        'deluge_torrent_{}'.format(exported_metric_name),
+        metric_description,
+        labels=['name', 'hash']
+      )
+    )
+
+
 class DelugeCollector:
   def __init__(self):
     deluge_config_dir = os.environ.get('DELUGE_CONFIG_DIR', get_deluge_config_dir())
@@ -122,15 +140,8 @@ class DelugeCollector:
         (GaugeMetricFamily, b'total_peers', 'The number of peers in the swarm for this torrent'),
         (GaugeMetricFamily, b'total_seeds', 'The number of seeds in the swarm for this torrent'),
       ]
-      per_torrent_metrics = dict(
-        (
-          metric_name,
-          metric_type(
-            'deluge_torrent_{}'.format(metric_name.decode('utf-8')),
-            metric_description, labels=['name', 'hash']
-          )
-        ) for metric_type, metric_name, metric_description in per_torrent_keys
-      )
+      per_torrent_metrics = dict(generate_per_torrent_metrics(per_torrent_keys))
+
       for torrent_hash, torrent in client.core.get_torrents_status({}, [key[1] for key in per_torrent_keys] + [b'name']).items():
         for metric_name, metric in per_torrent_metrics.items():
           metric.add_metric(

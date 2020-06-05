@@ -29,10 +29,14 @@ def get_labels(text):
       continue
     for s in m.samples:
       for ln, lv in s[1].items():
-        res[m.name][ln].add(lv)
+        res[s.name][ln].add(lv)
   res['deluge_torrents_by_label']['label'] = set('')
   res['deluge_info']['version'] = set('')
   res['deluge_info']['libtorrent_version'] = set('')
+  for key in res:
+    if key.startswith('deluge_torrent_'):
+      res[key]['name'] = set()
+      res[key]['hash'] = set()
   return res
 
 

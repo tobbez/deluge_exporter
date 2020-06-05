@@ -64,6 +64,8 @@ sc create deluge_exporter binPath= "C:\path\to\python.exe C:\path\to\deluge_expo
 
 ## Exported metrics
 
+For details about the libtorrent session metrics, see the [libtorrent manual](https://www.libtorrent.org/manual-ref.html#session-statistics).
+
 | Name                                                                | Type    | Description                                                                                                                                                   |
 | ------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | deluge\_libtorrent\_dht\_dht\_allocated\_observers                  | gauge   | libtorrent metric dht.dht\_allocated\_observers                                                                                                               |

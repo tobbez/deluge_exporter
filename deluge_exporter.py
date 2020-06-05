@@ -69,6 +69,8 @@ class DelugeCollector:
     with Path(deluge_config_dir / 'auth').open() as f:
       self.rpc_user, self.rpc_password = f.readline().strip().split(':')[:2]
 
+    self.per_torrent_metrics_enabled = int(os.environ.get("PER_TORRENT_METRICS", 0)) == 1
+
   def collect(self):
     deluge_host = os.environ.get('DELUGE_HOST', '127.0.0.1')
     client = DelugeRPCClient(deluge_host, self.rpc_port, self.rpc_user, self.rpc_password)
@@ -130,7 +132,7 @@ class DelugeCollector:
       torrents_metric.add_metric([state], torrent_count)
     yield torrents_metric
 
-    if int(os.environ.get("PER_TORRENT_METRICS", 0)) == 1:
+    if self.per_torrent_metrics_enabled:
       per_torrent_keys = [
         (CounterMetricFamily, b'total_done', 'The amount of data downloaded for this torrent'),
         (CounterMetricFamily, b'total_size', 'The size of this torrent'),

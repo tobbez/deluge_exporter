@@ -37,11 +37,25 @@ jobs:
           # Use Docker `latest` tag convention
           [ "$VERSION" == "master" ] && VERSION=latest
 
-          echo IMAGE_ID=$IMAGE_ID
-          echo VERSION=$VERSION
+          TAG_ARGS=(--tag "${IMAGE_ID}:${VERSION}")
+
+          # For a new version X.Y.Z, create tags for X.Y.Z, X.Y and X
+          if [ "${VERSION}" != "latest" ]; then
+            MINOR_VERSION="${VERSION%.*}"
+            if [ "${MINOR_VERSION}" != "$VERSION" ]; then # VERSION is either X.Y or X.Y.Z
+              TAG_ARGS+=(--tag "${IMAGE_ID}:${MINOR_VERSION}")
+              MAJOR_VERSION="${MINOR_VERSION%.*}"
+              if [ "${MAJOR_VERSION}" != "${MINOR_VERSION}" ]; then # VERSION is X.Y.Z
+                TAG_ARGS+=(--tag "${IMAGE_ID}:${MAJOR_VERSION}")
+              fi
+            fi
+          fi
+
+          echo "IMAGE_ID=$IMAGE_ID"
+          echo "TAGS=${TAG_ARGS[*]}"
 
           docker buildx build \
             --push \
             --platform linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64/v8,linux/ppc64le,linux/s390x \
-            --tag "${IMAGE_ID}:${VERSION}" \
+            "${TAG_ARGS[@]}" \
             .

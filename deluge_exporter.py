@@ -52,19 +52,26 @@ def generate_per_torrent_metrics(definition):
 
 class DelugeCollector:
     def __init__(self):
-        deluge_config_dir = Path(os.environ.get("DELUGE_CONFIG_DIR", get_deluge_config_dir()))
-        with (deluge_config_dir / "core.conf").open() as f:
-            while f.read(1) != "}":
-                pass
-            self.rpc_port = json.load(f)["daemon_port"]
-        with Path(deluge_config_dir / "auth").open() as f:
-            self.rpc_user, self.rpc_password = f.readline().strip().split(":")[:2]
+        if all(x in os.environ for x in ["DELUGE_HOST", "DELUGE_PORT", "DELUGE_USER", "DELUGE_PASSWORD"]):
+            self.rpc_host = os.environ["DELUGE_HOST"]
+            self.rpc_port = int(os.environ["DELUGE_PORT"])
+            self.rpc_user = os.environ["DELUGE_USER"]
+            self.rpc_password = os.environ["DELUGE_PASSWORD"]
+        else:
+            deluge_config_dir = Path(os.environ.get("DELUGE_CONFIG_DIR", get_deluge_config_dir()))
+            with (deluge_config_dir / "core.conf").open() as f:
+                while f.read(1) != "}":
+                    pass
+                self.rpc_port = json.load(f)["daemon_port"]
+            with Path(deluge_config_dir / "auth").open() as f:
+                self.rpc_user, self.rpc_password = f.readline().strip().split(":")[:2]
+
+            self.rpc_host = os.environ.get("DELUGE_HOST", "127.0.0.1")
 
         self.per_torrent_metrics_enabled = int(os.environ.get("PER_TORRENT_METRICS", 0)) == 1
 
     def collect(self):
-        deluge_host = os.environ.get("DELUGE_HOST", "127.0.0.1")
-        client = DelugeRPCClient(deluge_host, self.rpc_port, self.rpc_user, self.rpc_password)
+        client = DelugeRPCClient(self.rpc_host, self.rpc_port, self.rpc_user, self.rpc_password)
         client.connect()
 
         libtorrent_metrics = get_libtorrent_metrics_meta()

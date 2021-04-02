@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-
 import json
 import os
 import sys
 import time
-import itertools
 
 from collections import defaultdict
 from functools import lru_cache

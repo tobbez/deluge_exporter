@@ -1,5 +1,5 @@
 {
-  "version": "1.2.2.0",
+  "version": "1.2.12.0",
   "metrics": {
     "dht.dht_allocated_observers": "gauge",
     "dht.dht_announce_peer_in": "counter",
@@ -282,6 +282,7 @@
     "sock_bufs.socket_send_size7": "counter",
     "sock_bufs.socket_send_size8": "counter",
     "sock_bufs.socket_send_size9": "counter",
+    "tracker.num_queued_tracker_announces": "gauge",
     "utp.num_utp_close_wait": "gauge",
     "utp.num_utp_connected": "gauge",
     "utp.num_utp_deleted": "gauge",

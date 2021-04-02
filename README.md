@@ -19,33 +19,58 @@ areas that could be improved, and contributions are welcome. Some areas that
 could use improvements are:
 
  - [ ] Packaging: There are currently no packaging scripts nor PyPI packages
- - [ ] Configuration
 
 
-### Configuration
-The Deluge Exporter currently expects to be run under the same user account as
-the deluge daemon, and extracts the connection details from Deluge's
-configuration files.
+## Configuration
+### General settings
 
-The exporter listens on port 9354.
+ - `PER_TORRENT_METRICS`: Per-torrent metrics are disabled by default. Set this
+   environment variable to `1` to enable. Note that this may significantly
+   increase the number of time series (depending on the number of torrents in
+   your Deluge instances).
+ - `LISTEN_PORT`: The port the exporter should listen on. The default is `9354`.
+ - `LISTEN_ADDRESS`: The address the exporter should listen on. The default is
+   to listen on all addresses.
 
-The following settings can be overridden using environment variables:
+### Deluge connection
 
- - `DELUGE_HOST`: The host where deluge is running.
- - `DELUGE_CONFIG_DIR`: The path to Deluge's configuration directory.
+There are two options for configuring the Deluge connection details: to specify
+them explicitly, or to let the exporter read them from the Deluge configuration
+files.
 
+#### Explicit configuration
 
-### Per-torrent metrics
-Per-torrent metrics are disabled by default and can be enabled by setting the
-environment variable `PER_TORRENT_METRICS` to `1`. Keep in mind that this can
-cause series bloat.
+Set the all of the following environment variables:
+
+ - `DELUGE_HOST`: The host where Deluge is running.
+ - `DELUGE_PORT`: The port on which Deluge is listening.
+ - `DELUGE_USER`: The username to use when authenticating.
+ - `DELUGE_PASSWORD`: The password to use when authenticating.
+
+#### Read from Deluge's configuration files
+
+If not all of the environment variables listed in the previous section are not
+set, the exporter will automatically attempt to read the connection details
+from Deluge's configuration files (for the current user).
+
+The following environment variables can be used to customize the behaviour:
+
+ - `DELUGE_CONFIG_DIR`: The directory to read the configuration files from. The
+   default is `~/.config/deluge` on Linux and `%APPDATA%\deluge` on Windows.
+ - `DELUGE_HOST`: Override the the host to connect to.
 
 
 ## Docker
 
 A docker image is [available on Docker Hub](https://hub.docker.com/r/tobbez/deluge_exporter/).
 
-It currently requires passing the deluge config directory into the container, [for example](https://github.com/tobbez/deluge_exporter/pull/1#issue-229784499):
+Passing configuration using environment variables:
+
+```
+docker run -e "DELUGE_HOST=172.17.0.1" -e "DELUGE_PORT=58846" -e "DELUGE_USER=user" -e "DELUGE_PASSWORD=password" -v /etc/deluge:/root/.config/deluge/ -p 9354:9354 tobbez/deluge_exporter:latest
+```
+
+Or passing the deluge config directory into the container, [for example](https://github.com/tobbez/deluge_exporter/pull/1#issue-229784499):
 
 ```
 docker run -e "DELUGE_HOST=172.17.0.1" -v /etc/deluge:/root/.config/deluge/ -p 9354:9354 tobbez/deluge_exporter:latest

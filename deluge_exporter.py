@@ -163,7 +163,8 @@ class DelugeCollector:
 def start_exporter():
   REGISTRY.register(DelugeCollector())
   port = int(os.environ.get('LISTEN_PORT', 9354))
-  start_http_server(port)
+  address = os.environ.get('LISTEN_ADDRESS', '')
+  start_http_server(port, address)
 
 
 if __name__ == '__main__':

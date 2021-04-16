@@ -40,7 +40,7 @@ files.
 
 #### Explicit configuration
 
-Set the all of the following environment variables:
+Set all of the following environment variables:
 
  - `DELUGE_HOST`: The host where Deluge is running.
  - `DELUGE_PORT`: The port on which Deluge is listening.
@@ -49,9 +49,9 @@ Set the all of the following environment variables:
 
 #### Read from Deluge's configuration files
 
-If not all of the environment variables listed in the previous section are not
-set, the exporter will automatically attempt to read the connection details
-from Deluge's configuration files (for the current user).
+If not all of the environment variables listed in the previous section are set,
+the exporter will automatically attempt to read the connection details from
+Deluge's configuration files (for the current user).
 
 The following environment variables can be used to customize the behaviour:
 

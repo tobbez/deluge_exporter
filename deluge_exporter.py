@@ -97,6 +97,8 @@ class DelugeCollector:
             if isinstance(value, (int, float, bool)):
                 yield GaugeMetricFamily("deluge_config_{}".format(key.decode("utf-8")), "Value of the deluge config setting {}".format(key.decode("utf-8")), value=value)
 
+        # Not using a defaultdict here, so we can report 0 for states that
+        # currently apply to no torrents
         torrents_by_state = {
             "downloading": 0,
             "seeding": 0,
@@ -105,6 +107,8 @@ class DelugeCollector:
             "queued": 0,
             "error": 0,
             "active": 0,
+            "moving": 0,
+            "allocating": 0,
             # not the prometheus way, but the states above (as defined by deluge) are already overlapping, so sum() over them is already meaningless
             "total": 0,
         }

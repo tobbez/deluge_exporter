@@ -31,6 +31,8 @@ could use improvements are:
  - `LISTEN_PORT`: The port the exporter should listen on. The default is `9354`.
  - `LISTEN_ADDRESS`: The address the exporter should listen on. The default is
    to listen on all addresses.
+ - `LOG_LEVEL`: `ERROR`/`INFO`/`DEBUG`. Defaults to `ERROR` if empty or
+   unspecified.
 
 ### Deluge connection
 

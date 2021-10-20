@@ -8,7 +8,9 @@ from collections import defaultdict
 from functools import lru_cache
 from pathlib import Path
 
-from deluge_client import DelugeRPCClient
+from loguru import logger
+
+import deluge_client
 
 from prometheus_client import start_http_server
 from prometheus_client.core import GaugeMetricFamily, CounterMetricFamily, REGISTRY
@@ -57,6 +59,8 @@ class DelugeCollector:
             self.rpc_port = int(os.environ["DELUGE_PORT"])
             self.rpc_user = os.environ["DELUGE_USER"]
             self.rpc_password = os.environ["DELUGE_PASSWORD"]
+
+            logger.info("Using deluge connection config from environment: address = {}:{}, user = {}", self.rpc_host, self.rpc_port, self.rpc_user)
         else:
             deluge_config_dir = Path(os.environ.get("DELUGE_CONFIG_DIR", get_deluge_config_dir()))
             with (deluge_config_dir / "core.conf").open() as f:
@@ -68,11 +72,30 @@ class DelugeCollector:
 
             self.rpc_host = os.environ.get("DELUGE_HOST", "127.0.0.1")
 
+            logger.info("Using deluge connection config from {}: address = {}:{}, user = {}", deluge_config_dir, self.rpc_host, self.rpc_port, self.rpc_user)
+
         self.per_torrent_metrics_enabled = int(os.environ.get("PER_TORRENT_METRICS", 0)) == 1
 
+    @logger.catch
     def collect(self):
-        client = DelugeRPCClient(self.rpc_host, self.rpc_port, self.rpc_user, self.rpc_password)
-        client.connect()
+        logger.debug("Handling request")
+
+        client = deluge_client.DelugeRPCClient(self.rpc_host, self.rpc_port, self.rpc_user, self.rpc_password)
+
+        logger.debug("Connecting to deluge at {}:{} as {}", self.rpc_host, self.rpc_port, self.rpc_user)
+
+        try:
+            client.connect()
+        except ConnectionRefusedError:
+            logger.error("Connection refused while connecting to deluge at {}:{}", self.rpc_host, self.rpc_port)
+            return
+        except deluge_client.client.RemoteException as e:
+            # deluge_client generates error classes dynamically, so we can't
+            # handle specific subclasses of RemoteException (like BadLoginError)
+            logger.error("Failed to connect to deluge: {}: {}", type(e).__name__, str(e).split("\n")[0])
+            return
+
+        logger.debug("Connected. Collecting metrics...")
 
         libtorrent_metrics = get_libtorrent_metrics_meta()
         libtorrent_metric_values = client.call("core.get_session_status", [])
@@ -153,15 +176,29 @@ class DelugeCollector:
 
         client.disconnect()
 
+        logger.debug("Request handled")
 
+
+@logger.catch
 def start_exporter():
     REGISTRY.register(DelugeCollector())
     port = int(os.environ.get("LISTEN_PORT", 9354))
     address = os.environ.get("LISTEN_ADDRESS", "")
     start_http_server(port, address)
+    logger.info("Exporter listening on {}:{}", address, port)
 
 
 if __name__ == "__main__":
+    log_level = os.environ.get("LOG_LEVEL", "ERROR")
+    if log_level == "":
+        log_level = "ERROR"
+
+    if log_level not in ["ERROR", "INFO", "DEBUG"]:
+        logger.error("Invalid log level '{}' provided", log_level)
+        raise SystemExit(1)
+
+    logger.remove()
+    logger.add(sys.stderr, level=log_level, diagnose=False)
     start_exporter()
     while True:
         time.sleep(60)

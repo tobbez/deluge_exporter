@@ -1,2 +1,3 @@
 deluge-client
 prometheus_client
+loguru

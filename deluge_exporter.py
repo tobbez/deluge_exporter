@@ -200,5 +200,9 @@ if __name__ == "__main__":
     logger.remove()
     logger.add(sys.stderr, level=log_level, diagnose=False)
     start_exporter()
-    while True:
-        time.sleep(60)
+    try:
+        while True:
+            time.sleep(60)
+    except KeyboardInterrupt:
+        print()
+        pass

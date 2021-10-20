@@ -34,38 +34,27 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push image
-        run: |
-          IMAGE_ID=${{ secrets.DOCKERHUB_USER }}/deluge_exporter
+      - name: Generate docker metadata
+        id: metadata
+        uses: docker/metadata-action@v3
+        with:
+          images: |
+            ${{ secrets.DOCKERHUB_USER }}/deluge_exporter
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+          # Tag 'latest' on push to master
+          # https://github.com/docker/metadata-action/issues/112
+          flavor: |
+            latest=${{ github.ref == 'refs/heads/master' }}
 
-          # Strip git ref prefix from version
-          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-
-          # Strip "v" prefix from tag name
-          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
-
-          # Use Docker `latest` tag convention
-          [ "$VERSION" == "master" ] && VERSION=latest
-
-          TAG_ARGS=(--tag "${IMAGE_ID}:${VERSION}")
-
-          # For a new version X.Y.Z, create tags for X.Y.Z, X.Y and X
-          if [ "${VERSION}" != "latest" ]; then
-            MINOR_VERSION="${VERSION%.*}"
-            if [ "${MINOR_VERSION}" != "$VERSION" ]; then # VERSION is either X.Y or X.Y.Z
-              TAG_ARGS+=(--tag "${IMAGE_ID}:${MINOR_VERSION}")
-              MAJOR_VERSION="${MINOR_VERSION%.*}"
-              if [ "${MAJOR_VERSION}" != "${MINOR_VERSION}" ]; then # VERSION is X.Y.Z
-                TAG_ARGS+=(--tag "${IMAGE_ID}:${MAJOR_VERSION}")
-              fi
-            fi
-          fi
-
-          echo "IMAGE_ID=$IMAGE_ID"
-          echo "TAGS=${TAG_ARGS[*]}"
-
-          docker buildx build \
-            --push \
-            --platform linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64/v8,linux/ppc64le,linux/s390x \
-            "${TAG_ARGS[@]}" \
-            .
+      - name: Build and push images
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          platforms: linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64/v8,linux/ppc64le,linux/s390x
+          push: true
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}

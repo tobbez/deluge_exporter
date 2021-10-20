@@ -64,7 +64,7 @@ The following environment variables can be used to customize the behaviour:
 
 ## Docker
 
-A docker image is [available on Docker Hub](https://hub.docker.com/r/tobbez/deluge_exporter/).
+A docker image is available on [Docker Hub](https://hub.docker.com/r/tobbez/deluge_exporter/) and [GitHub Container Registry](https://github.com/tobbez/deluge_exporter/pkgs/container/deluge_exporter).
 
 Passing configuration using environment variables:
 

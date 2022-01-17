@@ -49,7 +49,7 @@ def generate_per_torrent_metrics(definition):
         if exported_metric_name.startswith("total_") and metric_type == CounterMetricFamily:
             exported_metric_name = exported_metric_name[6:]
 
-        yield (metric_name, metric_type(f"deluge_torrent_{exported_metric_name}", metric_description, labels=["name", "hash"]))
+        yield (metric_name, metric_type(f"deluge_torrent_{exported_metric_name}", metric_description, labels=["name", "hash", "state"]))
 
 
 class DelugeCollector:
@@ -136,10 +136,12 @@ class DelugeCollector:
             "total": 0,
         }
         torrents_by_label = defaultdict(int)
-        for torrent in client.core.get_torrents_status({}, [b"label", b"state", b"download_payload_rate", b"upload_payload_rate"]).values():
+        torrents_states = {}
+        for torrent_hash, torrent in client.core.get_torrents_status({}, [b"label", b"state", b"download_payload_rate", b"upload_payload_rate"]).items():
             if b"label" in torrent:
                 torrents_by_label[torrent[b"label"].decode("utf-8")] += 1
             torrents_by_state[torrent[b"state"].decode("utf-8").lower()] += 1
+            torrents_states[torrent_hash] = torrent[b"state"].decode("utf-8").lower()
             torrents_by_state["total"] += 1
             if torrent[b"download_payload_rate"] > 0 or torrent[b"upload_payload_rate"] > 0:
                 torrents_by_state["active"] += 1
@@ -169,7 +171,7 @@ class DelugeCollector:
 
             for torrent_hash, torrent in client.core.get_torrents_status({}, [key[1] for key in per_torrent_keys] + [b"name"]).items():
                 for metric_name, metric in per_torrent_metrics.items():
-                    metric.add_metric([torrent[b"name"].decode("utf-8"), torrent_hash.decode("utf-8")], torrent[metric_name])
+                    metric.add_metric([torrent[b"name"].decode("utf-8"), torrent_hash.decode("utf-8"), torrents_states[torrent_hash]], torrent[metric_name])
 
             for metric in per_torrent_metrics.values():
                 yield metric

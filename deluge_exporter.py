@@ -166,6 +166,16 @@ class DelugeCollector:
                 (GaugeMetricFamily, b"num_seeds", "The number of seeds currently connected to for this torrent"),
                 (GaugeMetricFamily, b"total_peers", "The number of peers in the swarm for this torrent"),
                 (GaugeMetricFamily, b"total_seeds", "The number of seeds in the swarm for this torrent"),
+                (GaugeMetricFamily, b"active_time", "The number of seconds this torrent has been active. i.e. not paused"),
+                (GaugeMetricFamily, b"seeding_time", "The number of seconds this torrent has been active and seeding"),
+                (GaugeMetricFamily, b"finished_time", "The number of seconds this torrent has spent in the finished state"),
+                (GaugeMetricFamily, b"all_time_download", "Total number of payload bytes downloaded across all sessions"),
+                (GaugeMetricFamily, b"time_added", "When this torrent was added"),
+                (GaugeMetricFamily, b"completed_time", "When this torrent was completed"),
+                (GaugeMetricFamily, b"time_since_download", "The number of seconds since we last downloaded payload from a peer on this torrent"),
+                (GaugeMetricFamily, b"time_since_upload", "The number of seconds since we last uploaded payload to a peer on this torrent"),
+                (GaugeMetricFamily, b"time_since_transfer", "The number of seconds since we last uploaded payload to or from a peer on this torrent"),
+                (GaugeMetricFamily, b"last_seen_complete", "The time when we last saw a seed or peers that together formed a complete copy of the torrent"),
             ]
             per_torrent_metrics = dict(generate_per_torrent_metrics(per_torrent_keys))
 

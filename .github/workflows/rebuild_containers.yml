@@ -1,0 +1,120 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+# Most of this has been copied as-is from containers.yml, and should be
+# extracted into a separate file so it can be re-used.
+# https://github.blog/2021-11-29-github-actions-reusable-workflows-is-generally-available/
+# https://docs.github.com/en/actions/learn-github-actions/reusing-workflows
+
+name: Rebuild container images
+
+on:
+  schedule:
+    - cron: '0 6 * * 2'
+  # allow running the workflow manually
+  workflow_dispatch:
+
+jobs:
+  get_refs:
+    runs-on: ubuntu-latest
+    outputs:
+      refs: ${{ steps.set-refs.outputs.refs }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Set refs
+        id: set-refs
+        run: echo "::set-output name=refs::$({ git tag -l | grep -Ev '^v1\.'; echo master; } | jq --raw-input --null-input --compact-output '[inputs | select(length>0)]')"
+  rebuild-containers:
+    runs-on: ubuntu-latest
+    needs: get_refs
+    strategy:
+      matrix:
+        ref: ${{ fromJson(needs.get_refs.outputs.refs) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ matrix.ref }}
+
+      - name: Set up QEMU
+        id: qemu
+        uses: docker/setup-qemu-action@v1
+
+      - name: Available QEMU platforms
+        run: echo ${{ steps.qemu.outputs.platforms }}
+
+      - name: Setup buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Available buildx platforms
+        run: echo ${{ steps.buildx.outputs.platforms }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      # is this the latest patch release
+      - name: Mangle version number
+        id: mangle-version
+        env:
+          version: ${{ matrix.ref }}
+          refs: ${{ needs.get_refs.outputs.refs }}
+        run: |
+          is_latest_for_this_major=false
+          is_latest_for_this_minor=false
+          major=
+          major_minor=
+          if [ "$version" != "master" ]; then
+            version=${version#v}
+            major=${version%%.*}
+            major_minor=$(echo "$version" | cut -d. -f1-2)
+            if [ "$(echo "$refs" | jq .[] -r | grep -E "^v${major_minor}(\.|$)" | sort -V | tail -1)" = "v$version" ]; then
+              is_latest_for_this_minor=true
+            fi
+            if [ "$(echo "$refs" | jq .[] -r | grep -E "^v${major}(\.|$)" | sort -V | tail -1)" = "v$version" ]; then
+              is_latest_for_this_major=true
+            fi
+          fi
+          echo "::set-output name=version::${version}"
+          echo "::set-output name=major::${major}"
+          echo "::set-output name=major_minor::${major_minor}"
+          echo "::set-output name=is_latest_for_this_major::${is_latest_for_this_major}"
+          echo "::set-output name=is_latest_for_this_minor::${is_latest_for_this_minor}"
+
+      - name: Generate docker metadata
+        id: metadata
+        uses: docker/metadata-action@v3
+        with:
+          images: |
+            ${{ secrets.DOCKERHUB_USER }}/deluge_exporter
+            ghcr.io/${{ github.repository_owner }}/deluge_exporter
+          # can't use type=semver for X or X.Y as the X.Y.Z we're building is not necessarily the latest X or latest X.Y
+          tags: |
+            type=raw,value=${{ steps.mangle-version.outputs.version }}
+            type=raw,value=${{ steps.mangle-version.outputs.major }},enable=${{ steps.mangle-version.outputs.is_latest_for_this_major }}
+            type=raw,value=${{ steps.mangle-version.outputs.major_minor }},enable=${{ steps.mangle-version.outputs.is_latest_for_this_minor }}
+          # Tag 'latest' on push to master
+          # https://github.com/docker/metadata-action/issues/112
+          flavor: |
+            latest=${{ matrix.ref == 'master' }}
+
+      - name: Build and push images
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          platforms: linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64/v8,linux/ppc64le,linux/s390x
+          push: true
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}

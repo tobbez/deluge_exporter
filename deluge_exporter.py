@@ -49,7 +49,7 @@ def generate_per_torrent_metrics(definition):
         if exported_metric_name.startswith("total_") and metric_type == CounterMetricFamily:
             exported_metric_name = exported_metric_name[6:]
 
-        yield (metric_name, metric_type(f"deluge_torrent_{exported_metric_name}", metric_description, labels=["name", "hash"]))
+        yield (metric_name, metric_type(f"deluge_torrent_{exported_metric_name}", metric_description, labels=["name", "hash", "state"]))
 
 
 class DelugeCollector:
@@ -136,10 +136,12 @@ class DelugeCollector:
             "total": 0,
         }
         torrents_by_label = defaultdict(int)
-        for torrent in client.core.get_torrents_status({}, [b"label", b"state", b"download_payload_rate", b"upload_payload_rate"]).values():
+        torrents_states = {}
+        for torrent_hash, torrent in client.core.get_torrents_status({}, [b"label", b"state", b"download_payload_rate", b"upload_payload_rate"]).items():
             if b"label" in torrent:
                 torrents_by_label[torrent[b"label"].decode("utf-8")] += 1
             torrents_by_state[torrent[b"state"].decode("utf-8").lower()] += 1
+            torrents_states[torrent_hash] = torrent[b"state"].decode("utf-8").lower()
             torrents_by_state["total"] += 1
             if torrent[b"download_payload_rate"] > 0 or torrent[b"upload_payload_rate"] > 0:
                 torrents_by_state["active"] += 1
@@ -164,12 +166,22 @@ class DelugeCollector:
                 (GaugeMetricFamily, b"num_seeds", "The number of seeds currently connected to for this torrent"),
                 (GaugeMetricFamily, b"total_peers", "The number of peers in the swarm for this torrent"),
                 (GaugeMetricFamily, b"total_seeds", "The number of seeds in the swarm for this torrent"),
+                (GaugeMetricFamily, b"active_time", "The number of seconds this torrent has been active. i.e. not paused"),
+                (GaugeMetricFamily, b"seeding_time", "The number of seconds this torrent has been active and seeding"),
+                (GaugeMetricFamily, b"finished_time", "The number of seconds this torrent has spent in the finished state"),
+                (GaugeMetricFamily, b"all_time_download", "Total number of payload bytes downloaded across all sessions"),
+                (GaugeMetricFamily, b"time_added", "When this torrent was added"),
+                (GaugeMetricFamily, b"completed_time", "When this torrent was completed"),
+                (GaugeMetricFamily, b"time_since_download", "The number of seconds since we last downloaded payload from a peer on this torrent"),
+                (GaugeMetricFamily, b"time_since_upload", "The number of seconds since we last uploaded payload to a peer on this torrent"),
+                (GaugeMetricFamily, b"time_since_transfer", "The number of seconds since we last uploaded payload to or from a peer on this torrent"),
+                (GaugeMetricFamily, b"last_seen_complete", "The time when we last saw a seed or peers that together formed a complete copy of the torrent"),
             ]
             per_torrent_metrics = dict(generate_per_torrent_metrics(per_torrent_keys))
 
             for torrent_hash, torrent in client.core.get_torrents_status({}, [key[1] for key in per_torrent_keys] + [b"name"]).items():
                 for metric_name, metric in per_torrent_metrics.items():
-                    metric.add_metric([torrent[b"name"].decode("utf-8"), torrent_hash.decode("utf-8")], torrent[metric_name])
+                    metric.add_metric([torrent[b"name"].decode("utf-8"), torrent_hash.decode("utf-8"), torrents_states[torrent_hash]], torrent[metric_name])
 
             for metric in per_torrent_metrics.values():
                 yield metric

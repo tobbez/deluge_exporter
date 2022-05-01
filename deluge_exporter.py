@@ -195,7 +195,7 @@ class DelugeCollector:
 def start_exporter():
     REGISTRY.register(DelugeCollector())
     port = int(os.environ.get("LISTEN_PORT", 9354))
-    address = os.environ.get("LISTEN_ADDRESS", "")
+    address = os.environ.get("LISTEN_ADDRESS", "0.0.0.0")
     start_http_server(port, address)
     logger.info("Exporter listening on {}:{}", address, port)
 

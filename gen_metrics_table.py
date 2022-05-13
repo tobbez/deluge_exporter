@@ -39,7 +39,7 @@ def get_labels(text):
             res[key]["name"] = set()
             res[key]["hash"] = set()
             # 'state' label for per-torrent metrics
-            res[key]["state"] = { "downloading", "seeding", "paused", "checking", "queued", "error", "active", "moving", "allocating" }
+            res[key]["state"] = {"downloading", "seeding", "paused", "checking", "queued", "error", "active", "moving", "allocating"}
     return res
 
 

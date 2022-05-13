@@ -194,10 +194,13 @@ class DelugeCollector:
 @logger.catch
 def start_exporter():
     REGISTRY.register(DelugeCollector())
-    port = int(os.environ.get("LISTEN_PORT", 9354))
-    address = os.environ.get("LISTEN_ADDRESS", "")
-    start_http_server(port, address)
-    logger.info("Exporter listening on {}:{}", address, port)
+    http_server_args = {
+        'port': int(os.environ.get("LISTEN_PORT", 9354)),
+    }
+    if (address := os.environ.get("LISTEN_ADDRESS")) is not None:
+        http_server_args['addr'] = address
+    start_http_server(**http_server_args)
+    logger.info("Exporter listening on {}:{}", http_server_args.get('addr', ''), http_server_args['port'])
 
 
 if __name__ == "__main__":

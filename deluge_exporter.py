@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import socket
 import sys
 import time
 
@@ -89,6 +90,12 @@ class DelugeCollector:
         except ConnectionRefusedError:
             logger.error("Connection refused while connecting to deluge at {}:{}", self.rpc_host, self.rpc_port)
             return
+        except socket.gaierror as e:
+            if e.errno == socket.EAI_NONAME:
+                # Since we already pass the service (port) as an integer, it must be the hostname that failed to resolve
+                logger.error("Failed to resolve hostname while connecting to deluge at {}:{}", self.rpc_host, self.rpc_port)
+                return
+            raise
         except deluge_client.client.RemoteException as e:
             # deluge_client generates error classes dynamically, so we can't
             # handle specific subclasses of RemoteException (like BadLoginError)

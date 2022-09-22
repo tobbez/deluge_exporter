@@ -81,7 +81,7 @@ class DelugeCollector:
     def collect(self):
         logger.debug("Handling request")
 
-        client = deluge_client.DelugeRPCClient(self.rpc_host, self.rpc_port, self.rpc_user, self.rpc_password)
+        client = deluge_client.DelugeRPCClient(self.rpc_host, self.rpc_port, self.rpc_user, self.rpc_password, automatic_reconnect=False)
 
         logger.debug("Connecting to deluge at {}:{} as {}", self.rpc_host, self.rpc_port, self.rpc_user)
 

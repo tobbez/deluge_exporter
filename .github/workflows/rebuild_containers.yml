@@ -25,7 +25,7 @@ jobs:
           fetch-depth: 0
       - name: Set refs
         id: set-refs
-        run: echo "::set-output name=refs::$({ git tag -l | grep -Ev '^v1\.'; echo master; } | jq --raw-input --null-input --compact-output '[inputs | select(length>0)]')"
+        run: echo "refs=$({ git tag -l | grep -Ev '^v1\.'; echo master; } | jq --raw-input --null-input --compact-output '[inputs | select(length>0)]')" >> "$GITHUB_OUTPUT"
   rebuild-containers:
     runs-on: ubuntu-latest
     needs: get_refs
@@ -87,11 +87,11 @@ jobs:
               is_latest_for_this_major=true
             fi
           fi
-          echo "::set-output name=version::${version}"
-          echo "::set-output name=major::${major}"
-          echo "::set-output name=major_minor::${major_minor}"
-          echo "::set-output name=is_latest_for_this_major::${is_latest_for_this_major}"
-          echo "::set-output name=is_latest_for_this_minor::${is_latest_for_this_minor}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "major=${major}" >> "$GITHUB_OUTPUT"
+          echo "major_minor=${major_minor}" >> "$GITHUB_OUTPUT"
+          echo "is_latest_for_this_major=${is_latest_for_this_major}" >> "$GITHUB_OUTPUT"
+          echo "is_latest_for_this_minor=${is_latest_for_this_minor}" >> "$GITHUB_OUTPUT"
 
       - name: Generate docker metadata
         id: metadata

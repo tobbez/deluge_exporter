@@ -1,5 +1,6 @@
 FROM python:alpine
-RUN pip install deluge-client prometheus_client loguru && rm -rf /root/.cache/
+COPY requirements.txt /requirements.txt
+RUN pip install -r /requirements.txt && rm -rf /root/.cache/
 COPY ./deluge_exporter.py /deluge_exporter.py
 COPY ./libtorrent_metrics.json /libtorrent_metrics.json
 EXPOSE 9354

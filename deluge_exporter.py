@@ -53,6 +53,77 @@ def generate_per_torrent_metrics(definition):
         yield (metric_name, metric_type(f"deluge_torrent_{exported_metric_name}", metric_description, labels=["name", "hash", "state"]))
 
 
+def _field(mapping, key):
+    if not isinstance(mapping, dict):
+        return None
+    if key in mapping:
+        return mapping[key]
+    encoded = key.encode("ascii")
+    if encoded in mapping:
+        return mapping[encoded]
+    return None
+
+
+def _label_text(value):
+    if isinstance(value, bytes):
+        return value.decode("utf-8")
+    if value is None:
+        return ""
+    return str(value)
+
+
+def _peer_progress_label(progress):
+    # Series in Prometheus use at most four decimal places and drop trailing zeros.
+    text = f"{float(progress or 0):.4f}".rstrip("0")
+    if text.endswith("."):
+        text += "0"
+    return text
+
+
+def extra_per_torrent_metrics(torrents):
+    """Tracker and per-peer gauges. Only called when PER_TORRENT_METRICS is set."""
+    tracker_info = GaugeMetricFamily(
+        "deluge_torrent_tracker_info",
+        "The tracker status for this torrent",
+        labels=["name", "hash", "tracker_host", "tracker_status"],
+    )
+    peer_labels = ["name", "hash", "client", "country", "ip", "is_seed", "progress"]
+    peer_down = GaugeMetricFamily(
+        "deluge_torrent_peer_down_speed_bytes",
+        "The download speed from this peer in bytes per second",
+        labels=peer_labels,
+    )
+    peer_up = GaugeMetricFamily(
+        "deluge_torrent_peer_up_speed_bytes",
+        "The upload speed to this peer in bytes per second",
+        labels=peer_labels,
+    )
+    peer_rows = {}
+    for torrent_hash, torrent in torrents:
+        name = _label_text(_field(torrent, "name"))
+        digest = _label_text(torrent_hash)
+        host = _label_text(_field(torrent, "tracker_host"))
+        if host:
+            tracker_info.add_metric([name, digest, host, _label_text(_field(torrent, "tracker_status"))], 1)
+        for peer in _field(torrent, "peers") or []:
+            labels = (
+                name,
+                digest,
+                _label_text(_field(peer, "client")),
+                _label_text(_field(peer, "country")),
+                _label_text(_field(peer, "ip")),
+                "1" if _field(peer, "seed") else "0",
+                _peer_progress_label(_field(peer, "progress")),
+            )
+            peer_rows[labels] = (_field(peer, "down_speed") or 0, _field(peer, "up_speed") or 0)
+    for labels, (down_speed, up_speed) in peer_rows.items():
+        peer_down.add_metric(labels, down_speed)
+        peer_up.add_metric(labels, up_speed)
+    yield tracker_info
+    yield peer_down
+    yield peer_up
+
+
 class DelugeCollector:
     def __init__(self):
         if all(x in os.environ for x in ["DELUGE_HOST", "DELUGE_PORT", "DELUGE_USER", "DELUGE_PASSWORD"]):
@@ -192,6 +263,8 @@ class DelugeCollector:
 
             for metric in per_torrent_metrics.values():
                 yield metric
+
+            yield from extra_per_torrent_metrics(client.core.get_torrents_status({}, [b"name", b"tracker_host", b"tracker_status", b"peers"]).items())
 
         client.disconnect()
 
